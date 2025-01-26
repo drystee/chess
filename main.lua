@@ -1,5 +1,7 @@
 --modules
 local Board = require("board")
+local Card = require("card")
+
 
 --variables
 local board
@@ -7,6 +9,8 @@ local canvas
 local crtShader
 local selectedPiece = nil
 local selectedCard = nil
+local dropzoneSprite
+local dropzonePos = { x = 64, y = love.graphics:getHeight() / 2, width = 126, height = 176 } -- Adjust position as needed
 local mouseOffset = { x = 0, y = 0 }
 local screenWidth = love.graphics.getWidth()
 local screenHeight = love.graphics.getHeight()
@@ -17,37 +21,7 @@ local cardSprite
 
 local deck = {
     cards = {},
-    transform = {
-        x = screenWidth / 2 - 63,
-        y = screenHeight / 2 - 88,
-        width = 126,
-        height = 176,
-    },
 }
-
--- Helper to create a new card
-local function new_card()
-    return {
-        dragging = false,
-        transform = {
-            x = (screenWidth - 126) / 2,
-            y = (screenHeight - 176) / 2,
-            width = 126,
-            height = 176
-        },
-        target_transform = {
-            x = (screenWidth - 126) / 2,
-            y = (screenHeight - 176) / 2,
-            width = 126,
-            height = 176
-        },
-        velocity = {
-            x = 0,
-            y = 0,
-        },
-        is_on_deck = true,
-    }
-end
 
 local function move(card, dt)
     local momentum = 0.75
@@ -69,22 +43,18 @@ local function move(card, dt)
     end
 end
 
+
 --init love
 function love.draw()
     -- Draw the board and pieces
     board:draw(selectedPiece)
 
-    -- Draw all cards
-    for _, card in ipairs(deck.cards) do
-        love.graphics.draw(cardSprite, card.transform.x, card.transform.y)
+    for _, card in ipairs(cards) do
+        card:draw()
     end
 
-    -- Draw any additional cards that are not on the deck
-    for _, card in ipairs(cards) do
-        if not card.is_on_deck then
-            love.graphics.draw(cardSprite, card.transform.x, card.transform.y)
-        end
-    end
+    -- Draw the playcard zone
+    love.graphics.draw(dropzoneSprite, dropzonePos.x, dropzonePos.y, 0, 1, 1)
 end
 
 function love.update(dt)
@@ -107,7 +77,7 @@ function love.update(dt)
             card.target_transform.x = love.mouse.getX() - card.transform.width / 2
             card.target_transform.y = love.mouse.getY() - card.transform.height / 2
         end
-        move(card, dt)
+        card:update(dt)
     end
 end
 
@@ -116,34 +86,32 @@ love.load = function()
     love.graphics.setDefaultFilter('nearest', 'nearest')
     board = Board:new() -- 800px size, 8x8 board
 
-    -- Load card sprite
-    cardSprite = love.graphics.newImage("assets/card.png")
+    -- Load assets
+    local cardSprite = love.graphics.newImage("assets/card.png")
+    dropzoneSprite = love.graphics.newImage("assets/dropzone.png")
 
-    -- Create three draggable cards
+    -- Create power cards
+    local powers = { "boost", "freeze", "shield" }
+    -- Create cards
     for i = 1, 3 do
-        local card = new_card()
+        local x = 100 + (i - 1) * 150 -- Space cards evenly at the bottom
+        local y = screenHeight - 150
+        local card = Card:new(cardSprite, x, y, 96, 135)
         table.insert(cards, card)
-        table.insert(deck.cards, card)
     end
-
     crtShader = love.graphics.newShader("crt.glsl")
     canvas = love.graphics.newCanvas(screenWidth, screenHeight, { type = '2d', readable = true })
 end
 
 love.mousepressed = function(x, y, button)
     if button == 1 then -- Left mouse button
-        -- First, check if a card is clicked
         for _, card in ipairs(cards) do
-            if x > card.transform.x
-                and x < card.transform.x + card.transform.width
-                and y > card.transform.y
-                and y < card.transform.y + card.transform.height
-            then
+            if card:isClicked(x, y) then
                 selectedCard = card
                 card.dragging = true
                 mouseOffset.x = x - card.transform.x
                 mouseOffset.y = y - card.transform.y
-                return -- Exit the function, so chess pieces can't be selected
+                return
             end
         end
 
@@ -173,6 +141,19 @@ love.mousereleased = function(x, y, button)
         -- Release the selected card
         if selectedCard then
             selectedCard.dragging = false
+
+            -- Check if the card is within the playcard zone
+            if x > dropzonePos.x and x < dropzonePos.x + dropzonePos.width
+                and y > dropzonePos.y and y < dropzonePos.y + dropzonePos.height then
+                -- Snap the card to the center of the playcard zone
+                selectedCard.target_transform.x = dropzonePos.x + (dropzonePos.width - selectedCard.transform.width) / 2
+                selectedCard.target_transform.y = dropzonePos.y + (dropzonePos.height - selectedCard.transform.height) / 2
+            else
+                -- Return the card to its original position
+                selectedCard.target_transform.x = selectedCard.original_position.x
+                selectedCard.target_transform.y = selectedCard.original_position.y
+            end
+    
             selectedCard = nil
         end
 

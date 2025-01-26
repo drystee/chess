@@ -5,5 +5,5 @@ love.conf = function(t)
     t.window.title = "awesome chess"
     t.window.vsync = 1 -- Enable vertical sync
     t.window.fullscreen = false
-    t.window.resizable = true
+    t.window.resizable = false
   end

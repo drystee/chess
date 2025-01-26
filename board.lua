@@ -31,7 +31,7 @@ local startingPositions = {
 
 function Board:new(size, squares)
     local self = setmetatable({}, { __index = Board })
-    self.size =  love.graphics.getHeight() - 120
+    self.size =  love.graphics.getHeight() - 200
     self.squares =  8
     self.squareSize = self.size / self.squares
     self.x = (love.graphics.getWidth() - self.size) / 2
@@ -45,6 +45,8 @@ function Board:new(size, squares)
     self.attackHighlightImg = love.graphics.newImage("assets/highlight_attack.png")
     return self
 end
+
+
 
 function Board:getValidMoves(piece, fromRow, fromCol)
     local validMoves = {}
@@ -152,10 +154,25 @@ function Board:draw(selectedPiece)
             local y = self.y + (move.row - 1) * self.squareSize
             if move.isCapture then
                 love.graphics.setColor(1, 1, 1, 0.7) -- Semi-transparent red highlight
-                love.graphics.draw(self.attackHighlightImg, x, y, 0, self.squareSize / self.attackHighlightImg:getWidth(), self.squareSize / self.attackHighlightImg:getHeight())
+                love.graphics.draw(
+                    self.attackHighlightImg,
+                    x,
+                    y,
+                    0, -- Rotation
+                    self.squareSize / self.attackHighlightImg:getWidth(), -- Scale X
+                    self.squareSize / self.attackHighlightImg:getHeight() -- Scale Y
+                )
+
             else
                 love.graphics.setColor(1, 1, 1, 0.5) -- Semi-transparent highlight
-                love.graphics.draw(self.highlightImg, x, y, 0, self.squareSize / self.highlightImg:getWidth(), self.squareSize / self.highlightImg:getHeight())
+                love.graphics.draw(
+                    self.highlightImg,
+                    x,
+                    y,
+                    0, -- Rotation
+                    self.squareSize / self.highlightImg:getWidth(), -- Scale X
+                    self.squareSize / self.highlightImg:getHeight() -- Scale Y
+                )
             end
         end
     end
@@ -168,7 +185,14 @@ function Board:draw(selectedPiece)
                 local x = self.x + (col - 1) * self.squareSize
                 local y = self.y + (row - 1) * self.squareSize
                 love.graphics.setColor(1, 1, 1)
-                love.graphics.draw(piece.img, x, y, 0, self.squareSize / piece.width, self.squareSize / piece.height)
+                love.graphics.draw(
+                    piece.img,
+                    x,
+                    y,
+                    0, -- Rotation
+                    self.squareSize / piece.width, -- Scale X
+                    self.squareSize / piece.height -- Scale Y
+                )
             end
         end
     end
