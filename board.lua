@@ -28,10 +28,9 @@ local startingPositions = {
     { 2, 3, 4, 5, 6, 4, 3, 2 },     -- White Rooks, Knights, Bishops, etc.
 }
 
-
 function Board:new(size, squares)
     local self = setmetatable({}, { __index = Board })
-    self.size =  love.graphics.getHeight() - 320
+    self.size =  love.graphics.getHeight()
     self.squares =  8
     self.squareSize = self.size / self.squares
     self.x = (love.graphics.getWidth() - self.size) / 2
@@ -45,7 +44,69 @@ function Board:new(size, squares)
     self.attackHighlightImg = love.graphics.newImage("assets/highlight_attack.png")
     return self
 end
+-- Check if the king is in check
+function Board:isKingInCheck(color)
+    local kingRow, kingCol
+    for row = 1, 8 do
+        for col = 1, 8 do
+            local piece = self.pieces[row][col]
+            if piece and piece.color == color and (piece.id == 6 or piece.id == 12) then
+                kingRow, kingCol = row, col
+                break
+            end
+        end
+    end
 
+    if not kingRow or not kingCol then
+        return false -- King not found (shouldn't happen unless the game is over)
+    end
+
+    for row = 1, 8 do
+        for col = 1, 8 do
+            local attacker = self.pieces[row][col]
+            if attacker and attacker.color ~= color then
+                if self:isValidMove(attacker, row, col, kingRow, kingCol) then
+                    return true -- King is under attack
+                end
+            end
+        end
+    end
+
+    return false
+end
+-- Check for checkmate
+function Board:isCheckmate(color)
+    if not self:isKingInCheck(color) then
+        return false
+    end
+
+    for row = 1, 8 do
+        for col = 1, 8 do
+            local piece = self.pieces[row][col]
+            if piece and piece.color == color then
+                local validMoves = self:getValidMoves(piece, row, col)
+                for _, move in ipairs(validMoves) do
+                    -- Simulate the move
+                    local capturedPiece = self.pieces[move.row][move.col]
+                    self.pieces[move.row][move.col] = piece
+                    self.pieces[row][col] = nil
+
+                    local isStillInCheck = self:isKingInCheck(color)
+
+                    -- Undo the move
+                    self.pieces[row][col] = piece
+                    self.pieces[move.row][move.col] = capturedPiece
+
+                    if not isStillInCheck then
+                        return false -- King can escape
+                    end
+                end
+            end
+        end
+    end
+
+    return true -- No valid moves to escape check
+end
 function Board:getValidMoves(piece, fromRow, fromCol)
     local validMoves = {}
     for toRow = 1, 8 do
@@ -96,34 +157,85 @@ function Board:getSquareAt(x, y)
     end
     return nil, nil
 end
-
+function Board:getAllMovesForBlack()
+    local allMoves = {}
+    for row = 1, 8 do
+        for col = 1, 8 do
+            local piece = self:getPieceAt(row, col)
+            if piece and piece.color == "black" then
+                local validMoves = self:getValidMoves(piece, row, col)
+                for _, move in ipairs(validMoves) do
+                    table.insert(allMoves, {
+                        piece = piece,        -- The piece making the move
+                        fromRow = row,        -- Starting row
+                        fromCol = col,        -- Starting column
+                        toRow = move.row,     -- Target row
+                        toCol = move.col,     -- Target column
+                        isCapture = move.isCapture, -- Whether it's a capture
+                    })
+                end
+            end
+        end
+    end
+    return allMoves
+end
 function Board:getPieceAt(row, col)
     return self.pieces[row] and self.pieces[row][col] or nil
 end
 
 function Board:updateBoard()
-    return    
+    if self.currentTurn == "black" then
+        local blackMoves = self:getAllMovesForBlack()
+        
+        if #blackMoves > 0 then
+            -- Pick and execute a random move
+            local randomMove = blackMoves[math.random(1, #blackMoves)]
+            self:movePiece(
+                randomMove.fromRow,
+                randomMove.fromCol,
+                randomMove.toRow,
+                randomMove.toCol
+            )
+        end
+    end
 end
 
 function Board:movePiece(fromRow, fromCol, toRow, toCol)
     local piece = self.pieces[fromRow][fromCol]
     if self:isValidMove(piece, fromRow, fromCol, toRow, toCol) then
+        -- Handle castling
+        if (piece.id == 6 or piece.id == 12) and math.abs(toCol - fromCol) == 2 then
+            local rookCol = (toCol > fromCol) and 8 or 1
+            local rookNewCol = (toCol > fromCol) and toCol - 1 or toCol + 1
+            local rook = self:getPieceAt(fromRow, rookCol)
+            self.pieces[fromRow][rookNewCol] = rook
+            self.pieces[fromRow][rookCol] = nil
+            rook.col = rookNewCol
+        end
+
+        local targetPiece = self.pieces[toRow][toCol]
         self.pieces[fromRow][fromCol] = nil
         self.pieces[toRow][toCol] = piece
         piece.row = toRow
         piece.col = toCol
-        self.moveSound:play()
         piece.hasMoved = true
+        self.moveSound:play()
+
+        -- Check for check or checkmate
+        local opponentColor = (self.currentTurn == "white") and "black" or "white"
+        if self:isCheckmate(opponentColor) then
+            print(self.currentTurn .. " wins by checkmate!")
+        elseif self:isKingInCheck(opponentColor) then
+            print(opponentColor .. " is in check!")
+        end
+
         -- Switch turn
-        self.currentTurn = (self.currentTurn == "white") and "black" or "white"
+        self.currentTurn = opponentColor
         self:updateBoard()
     else
-        -- Invalid move, reset the piece to its original position
-        piece.tempX = self.x + (fromCol - 1) * self.squareSize
-        piece.tempY = self.y + (fromRow - 1) * self.squareSize
+        print("Invalid move!")
     end
 end
-
 function Board:draw(selectedPiece)
     -- Draw chessboard squares
     for row = 0, self.squares - 1 do
@@ -228,6 +340,27 @@ function Board:isValidMove(piece, fromRow, fromCol, toRow, toCol)
     -- Legal move logic based on piece type
     local rowDiff = math.abs(toRow - fromRow)
     local colDiff = math.abs(toCol - fromCol)
+
+    if piece.id == 6 or piece.id == 12 then -- King
+        -- Castling
+        if not piece.hasMoved and rowDiff == 0 and colDiff == 2 then
+            local rookCol = (toCol > fromCol) and 8 or 1 -- Determine which rook is involved
+            local rook = self:getPieceAt(fromRow, rookCol)
+            if rook and (rook.id == 2 or rook.id == 8) and not rook.hasMoved then
+                -- Ensure the path is clear and not under attack
+                local pathClear = self:isPathClear(fromRow, fromCol, fromRow, rookCol)
+                local squaresSafe = true
+                for col = math.min(fromCol, toCol), math.max(fromCol, toCol) do
+                    if self:isKingInCheck(piece.color) then
+                        squaresSafe = false
+                        break
+                    end
+                end
+                return pathClear and squaresSafe
+            end
+        end
+        return rowDiff <= 1 and colDiff <= 1
+    end
 
     if piece.id == 1 or piece.id == 7 then -- Pawn
         local direction = (piece.id == 1 and -1) or 1 -- White moves up (-1), black moves down (+1)

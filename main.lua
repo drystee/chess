@@ -43,24 +43,10 @@ local function move(card, dt)
     end
 end
 
-
 --init love
 function love.draw()
     -- Draw the board and pieces
     board:draw(selectedPiece)
-
-    -- Draw the playcard zone
-    love.graphics.draw(dropzoneSprite,
-    dropzoneTranform.x,
-    dropzoneTranform.y,
-    0,
-    dropzoneTranform.width / dropzoneSprite:getWidth(),
-    dropzoneTranform.height / dropzoneSprite:getHeight())
-
-    
-    for _, card in ipairs(cards) do
-        card:draw()
-    end
 end
 
 function love.update(dt)
@@ -96,15 +82,6 @@ love.load = function()
     local cardSprite = love.graphics.newImage("assets/card.png")
     dropzoneSprite = love.graphics.newImage("assets/dropzone.png")
 
-    -- Create power cards
-    local powers = { "boost", "freeze", "shield" }
-    -- Create cards
-    for i = 1, 3 do
-        local x = (love.graphics:getWidth() / 2) - (board.size / 2) + (i - 1) * 50 -- Space cards evenly at the bottom
-        local y = screenHeight - 150
-        local card = Card:new(cardSprite, x, y, 96, 135)
-        table.insert(cards, card)
-    end
     crtShader = love.graphics.newShader("crt.glsl")
     canvas = love.graphics.newCanvas(screenWidth, screenHeight, { type = '2d', readable = true })
 end
