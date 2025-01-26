@@ -31,7 +31,7 @@ local startingPositions = {
 
 function Board:new(size, squares)
     local self = setmetatable({}, { __index = Board })
-    self.size =  love.graphics.getHeight() - 200
+    self.size =  love.graphics.getHeight() - 320
     self.squares =  8
     self.squareSize = self.size / self.squares
     self.x = (love.graphics.getWidth() - self.size) / 2
@@ -45,8 +45,6 @@ function Board:new(size, squares)
     self.attackHighlightImg = love.graphics.newImage("assets/highlight_attack.png")
     return self
 end
-
-
 
 function Board:getValidMoves(piece, fromRow, fromCol)
     local validMoves = {}
@@ -64,7 +62,6 @@ function Board:getValidMoves(piece, fromRow, fromCol)
     end
     return validMoves
 end
-
 
 function Board:initializePieces()
     for row = 1, #startingPositions do

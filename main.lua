@@ -10,7 +10,7 @@ local crtShader
 local selectedPiece = nil
 local selectedCard = nil
 local dropzoneSprite
-local dropzonePos = { x = 64, y = love.graphics:getHeight() / 2, width = 126, height = 176 } -- Adjust position as needed
+local dropzoneTranform = { x = 64, y = love.graphics:getHeight() / 2, width = 96, height = 135 } 
 local mouseOffset = { x = 0, y = 0 }
 local screenWidth = love.graphics.getWidth()
 local screenHeight = love.graphics.getHeight()
@@ -49,12 +49,18 @@ function love.draw()
     -- Draw the board and pieces
     board:draw(selectedPiece)
 
+    -- Draw the playcard zone
+    love.graphics.draw(dropzoneSprite,
+    dropzoneTranform.x,
+    dropzoneTranform.y,
+    0,
+    dropzoneTranform.width / dropzoneSprite:getWidth(),
+    dropzoneTranform.height / dropzoneSprite:getHeight())
+
+    
     for _, card in ipairs(cards) do
         card:draw()
     end
-
-    -- Draw the playcard zone
-    love.graphics.draw(dropzoneSprite, dropzonePos.x, dropzonePos.y, 0, 1, 1)
 end
 
 function love.update(dt)
@@ -142,22 +148,32 @@ love.mousereleased = function(x, y, button)
         if selectedCard then
             selectedCard.dragging = false
 
-            -- Check if the card is within the playcard zone
-            if x > dropzonePos.x and x < dropzonePos.x + dropzonePos.width
-                and y > dropzonePos.y and y < dropzonePos.y + dropzonePos.height then
-                -- Snap the card to the center of the playcard zone
-                selectedCard.target_transform.x = dropzonePos.x + (dropzonePos.width - selectedCard.transform.width) / 2
-                selectedCard.target_transform.y = dropzonePos.y + (dropzonePos.height - selectedCard.transform.height) / 2
+            -- Check for overlap with the drop zone
+            local cardLeft = selectedCard.transform.x
+            local cardRight = selectedCard.transform.x + selectedCard.transform.width
+            local cardTop = selectedCard.transform.y
+            local cardBottom = selectedCard.transform.y + selectedCard.transform.height
+
+            local zoneLeft = dropzoneTranform.x
+            local zoneRight = dropzoneTranform.x + dropzoneTranform.width
+            local zoneTop = dropzoneTranform.y
+            local zoneBottom = dropzoneTranform.y + dropzoneTranform.height
+
+            if cardRight > zoneLeft and cardLeft < zoneRight and
+               cardBottom > zoneTop and cardTop < zoneBottom then
+                -- Snap the card to the center of the drop zone
+                selectedCard.target_transform.x = dropzoneTranform.x + (dropzoneTranform.width - selectedCard.transform.width) / 2
+                selectedCard.target_transform.y = dropzoneTranform.y + (dropzoneTranform.height - selectedCard.transform.height) / 2
             else
                 -- Return the card to its original position
                 selectedCard.target_transform.x = selectedCard.original_position.x
                 selectedCard.target_transform.y = selectedCard.original_position.y
             end
-    
+
             selectedCard = nil
         end
 
-        -- Release the selected piece
+        -- Release the selected piece (for chess logic)
         if selectedPiece then
             local targetRow, targetCol = board:getSquareAt(x, y)
             if targetRow and targetCol then
@@ -169,6 +185,7 @@ love.mousereleased = function(x, y, button)
         end
     end
 end
+
 
 love.keypressed = function(pressed_key)
     if pressed_key == 'escape' then
