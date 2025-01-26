@@ -1,29 +1,16 @@
 local Card = {}
 Card.__index = Card
 
-function Card:new(sprite, x, y, width, height, power)
-    local card = {
-        sprite = sprite,
-        power = power or "default",
-        dragging = false,
-        original_position = { x = x, y = y }, -- Store the original position
-        transform = {
-            x = x,
-            y = y,
-            width = width or 96,
-            height = height or 135,
-        },
-        target_transform = {
-            x = x,
-            y = y,
-        },
-        velocity = { x = 0, y = 0 },
-        is_on_deck = true,
-    }
-    setmetatable(card, Card)
+function Card:new(sprite, x, y, width, height)
+    local card = setmetatable({}, { __index = Card })
+    card.sprite = sprite
+    card.transform = { x = x, y = y, width = width, height = height }
+    card.target_transform = { x = x, y = y }
+    card.original_position = { x = x, y = y } -- Save the initial position
+    card.velocity = { x = 0, y = 0 }
+    card.dragging = false
     return card
 end
-
 local function align(deck)
     local deck_height = 10 / #deck.cards
     for position, card in ipairs(deck.cards) do
@@ -67,12 +54,9 @@ function Card:draw()
 
 end
 
--- Check if the card was clicked
 function Card:isClicked(x, y)
-    return x > self.transform.x and
-        x < self.transform.x + self.transform.width and
-        y > self.transform.y and
-        y < self.transform.y + self.transform.height
+    return x >= self.transform.x and x <= (self.transform.x + self.transform.width) and
+           y >= self.transform.y and y <= (self.transform.y + self.transform.height)
 end
 
 -- Trigger the card's power effect

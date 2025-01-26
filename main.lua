@@ -100,7 +100,7 @@ love.load = function()
     local powers = { "boost", "freeze", "shield" }
     -- Create cards
     for i = 1, 3 do
-        local x = 100 + (i - 1) * 150 -- Space cards evenly at the bottom
+        local x = (love.graphics:getWidth() / 2) - (board.size / 2) + (i - 1) * 50 -- Space cards evenly at the bottom
         local y = screenHeight - 150
         local card = Card:new(cardSprite, x, y, 96, 135)
         table.insert(cards, card)
@@ -111,17 +111,24 @@ end
 
 love.mousepressed = function(x, y, button)
     if button == 1 then -- Left mouse button
-        for _, card in ipairs(cards) do
+        for i = #cards, 1, -1 do -- Iterate from topmost to bottommost card
+            local card = cards[i]
             if card:isClicked(x, y) then
                 selectedCard = card
                 card.dragging = true
+
+                -- Store mouse offset for dragging
                 mouseOffset.x = x - card.transform.x
                 mouseOffset.y = y - card.transform.y
+
+                -- Move the selected card to the top of the stack
+                --table.remove(cards, i)
+                --table.insert(cards, card)
                 return
             end
         end
 
-        -- If no card is clicked, check if a chess piece is clicked
+        -- If no card is clicked, check for chess piece selection
         local row, col = board:getSquareAt(x, y)
         if row and col then
             local piece = board:getPieceAt(row, col)
@@ -140,6 +147,7 @@ love.mousepressed = function(x, y, button)
         end
     end
 end
+
 
 
 love.mousereleased = function(x, y, button)
