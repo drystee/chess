@@ -1,7 +1,9 @@
+-- main.lua
+-- written by @drystee 28/01/2025
+
 --modules
 local Board = require("board")
 local Card = require("card")
-
 
 --variables
 local board
@@ -15,13 +17,8 @@ local mouseOffset = { x = 0, y = 0 }
 local screenWidth = love.graphics.getWidth()
 local screenHeight = love.graphics.getHeight()
 local startTime = love.timer.getTime()
-
 local cards = {}
 local cardSprite
-
-local deck = {
-    cards = {},
-}
 
 local function move(card, dt)
     local momentum = 0.75
@@ -43,21 +40,17 @@ local function move(card, dt)
     end
 end
 
---init love
 function love.draw()
-    -- Draw the board and pieces
     board:draw(selectedPiece)
 end
 
 function love.update(dt)
-    -- Update the position of the selected piece
     if selectedPiece then
         local x, y = love.mouse.getPosition()
         selectedPiece.tempX = x - mouseOffset.x
         selectedPiece.tempY = y - mouseOffset.y
     end
 
-    -- Update the position of the selected card
     if selectedCard then
         local x, y = love.mouse.getPosition()
         selectedCard.tempX = x - mouseOffset.x
@@ -74,11 +67,9 @@ function love.update(dt)
 end
 
 love.load = function()
-    -- Keep pixels sharp and intact instead of blurring
     love.graphics.setDefaultFilter('nearest', 'nearest')
-    board = Board:new() -- 800px size, 8x8 board
+    board = Board:new() 
 
-    -- Load assets
     local cardSprite = love.graphics.newImage("assets/card.png")
     dropzoneSprite = love.graphics.newImage("assets/dropzone.png")
 
@@ -87,25 +78,19 @@ love.load = function()
 end
 
 love.mousepressed = function(x, y, button)
-    if button == 1 then -- Left mouse button
-        for i = #cards, 1, -1 do -- Iterate from topmost to bottommost card
+    if button == 1 then
+        for i = #cards, 1, -1 do 
             local card = cards[i]
             if card:isClicked(x, y) then
                 selectedCard = card
                 card.dragging = true
 
-                -- Store mouse offset for dragging
                 mouseOffset.x = x - card.transform.x
                 mouseOffset.y = y - card.transform.y
-
-                -- Move the selected card to the top of the stack
-                --table.remove(cards, i)
-                --table.insert(cards, card)
                 return
             end
         end
 
-        -- If no card is clicked, check for chess piece selection
         local row, col = board:getSquareAt(x, y)
         if row and col then
             local piece = board:getPieceAt(row, col)
@@ -128,12 +113,10 @@ end
 
 
 love.mousereleased = function(x, y, button)
-    if button == 1 then -- Left mouse button
-        -- Release the selected card
+    if button == 1 then 
         if selectedCard then
             selectedCard.dragging = false
 
-            -- Check for overlap with the drop zone
             local cardLeft = selectedCard.transform.x
             local cardRight = selectedCard.transform.x + selectedCard.transform.width
             local cardTop = selectedCard.transform.y
@@ -146,11 +129,9 @@ love.mousereleased = function(x, y, button)
 
             if cardRight > zoneLeft and cardLeft < zoneRight and
                cardBottom > zoneTop and cardTop < zoneBottom then
-                -- Snap the card to the center of the drop zone
                 selectedCard.target_transform.x = dropzoneTranform.x + (dropzoneTranform.width - selectedCard.transform.width) / 2
                 selectedCard.target_transform.y = dropzoneTranform.y + (dropzoneTranform.height - selectedCard.transform.height) / 2
             else
-                -- Return the card to its original position
                 selectedCard.target_transform.x = selectedCard.original_position.x
                 selectedCard.target_transform.y = selectedCard.original_position.y
             end
@@ -158,19 +139,16 @@ love.mousereleased = function(x, y, button)
             selectedCard = nil
         end
 
-        -- Release the selected piece (for chess logic)
         if selectedPiece then
             local targetRow, targetCol = board:getSquareAt(x, y)
             if targetRow and targetCol then
                 local targetPiece = board:getPieceAt(targetRow, targetCol)
-                -- Ensure the move is valid by letting the board logic handle the check
                 board:movePiece(selectedPiece.row, selectedPiece.col, targetRow, targetCol)
             end
             selectedPiece = nil
         end
     end
 end
-
 
 love.keypressed = function(pressed_key)
     if pressed_key == 'escape' then
